@@ -1,0 +1,53 @@
+{
+  "configs":
+  [
+    {
+      "interface": ":8080",
+      "upstreams": [
+        {
+          "path": "/com",
+          "method": "GET",
+          "proxy_method": "round-robin",
+          "backends": [
+            "https://google.com",
+            "https://facebook.com"
+          ]
+        },
+        {
+          "path": "/ru",
+          "method": "GET",
+          "proxy_method": "anycast",
+          "backends": [
+            "https://mail.ru",
+            "https://lenta.ru"
+          ]
+        }
+      ],
+      "grace_timout_stop": 10
+    },
+    {
+      "interface": ":8081",
+      "upstreams": [
+        {
+          "path": "/movie",
+          "method": "GET",
+          "proxy_method": "round-robin",
+          "backends": [
+            "https://ivi.ru",
+            "https://megogo.ru"
+          ]
+        },
+        {
+          "path": "/clips",
+          "method": "GET",
+          "proxy_method": "anycast",
+          "backends": [
+            "https://www.mtv.ru",
+            "https://muz-tv.ru"
+          ]
+        }
+      ],
+      "grace_timout_stop": 5
+    }
+  ]
+}
