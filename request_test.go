@@ -52,7 +52,7 @@ func TestRequestUrlRequester(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, expected := range item.expected_url {
-			if resp.Header.Get("Url") == expected {
+			if resp.Header.Get("URL") == expected {
 				found = true
 				break
 			}
