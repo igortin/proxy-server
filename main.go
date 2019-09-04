@@ -35,8 +35,6 @@ var (
 	ErrUnableToRemove = errors.New("unable to remove pid file")
 )
 
-
-
 func main() {
 	app := cli.NewApp()
 	app.Name = "proxy-cli"
@@ -83,14 +81,12 @@ func main() {
 		},
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
-
 	sort.Sort(cli.FlagsByName(app.Flags))
-
 	err := app.Run(os.Args)
+
 	if err != nil {
 		return
 	}
-
 	wg.Wait()
 }
 
@@ -115,7 +111,6 @@ func run(ctx *cli.Context) error {
 				}, conf, conf.GraceTimoutStop),
 			darproxy.Logger, // for decorator use instance of logger
 		)
-
 		wg.Add(1)
 		go server.Run(&wg)
 	}
