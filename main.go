@@ -39,7 +39,10 @@ var (
 	ErrUnableToFind   = errors.New("unable to find process id")
 	ErrUnableToKill   = errors.New("unable to kill process")
 	ErrUnableToRemove = errors.New("unable to remove pid file")
-)
+	ErrUnableToStart  = errors.New("unable to start procces")
+
+	ErrRunningState   = errors.New("already running or pid file exist")
+	)
 
 func main() {
 	app := cli.NewApp()
@@ -89,7 +92,6 @@ func main() {
 	sort.Sort(cli.CommandsByName(app.Commands))
 	sort.Sort(cli.FlagsByName(app.Flags))
 	NewLogger.SetLevel(logrus.DebugLevel)
-	NewLogger.Info(isBackground)
 	fd, _ := os.OpenFile(getLogFilePath(), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0777)
 	NewLogger.SetOutput(fd)
 	err := app.Run(os.Args)
@@ -103,7 +105,7 @@ func main() {
 func run(ctx *cli.Context) error {
 	err := getCfg(proxyConfigs)
 	if err != nil {
-		NewLogger.Error("unable to start procces: ", err)
+		NewLogger.Error(ErrUnableToStart," ",err)
 		os.Exit(1)
 	}
 	if isBackground {
@@ -126,7 +128,7 @@ func run(ctx *cli.Context) error {
 func runBackground() error {
 	defer os.Exit(0)
 	if _, err := os.Stat(getPidFilePath()); err == nil {
-		NewLogger.Error("already running or pid file exist : ", getPidFilePath())
+		NewLogger.Error(ErrRunningState," ",getPidFilePath())
 		os.Exit(1)
 		return nil
 	}
@@ -147,19 +149,22 @@ func runBackground() error {
 		NewLogger.Error(err)
 		os.Exit(1)
 	}
-	NewLogger.Debug("background process ID: ", cliExec.Process.Pid)
+	NewLogger.Debug("background process ID: ", cliExec.Process.Pid, " ", "successfully started")
 	return nil
 }
 
 func stop(c *cli.Context) error {
 	defer os.Exit(0)
-	err := clear()
+	data, err := ioutil.ReadFile(getPidFilePath())
 	if err != nil {
-		NewLogger.Error("background process could not be stopped: ", err)
-		return err
+		NewLogger.Debug("unable get pid for process: ", err)
 	}
-
-	NewLogger.Debug("proxy server was successfully stopped", )
+	err = clear()
+	if err != nil {
+		NewLogger.Error("background process ID:", string(data), " ", "could not be stopped: ", err)
+		os.Exit(1)
+	}
+	NewLogger.Debug("background process ID: ", string(data), " ", "successfully stopped")
 	return nil
 }
 
@@ -234,4 +239,7 @@ func reload(c *cli.Context) error {
 	return nil
 }
 
-func getLogFilePath() string { return os.Getenv("HOME") + sep + LogPath }
+
+func getLogFilePath() string {
+	return os.Getenv("HOME") + sep + LogPath
+}
