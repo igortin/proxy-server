@@ -32,7 +32,6 @@ var (
 	fd           os.File
 	NewLogger    = logrus.New()
 )
-// Description messages
 var (
 	ErrNotRunning     = errors.New("process is not running")
 	ErrUnableToParse  = errors.New("unable to read and parse process id")
@@ -40,7 +39,6 @@ var (
 	ErrUnableToKill   = errors.New("unable to kill process")
 	ErrUnableToRemove = errors.New("unable to remove pid file")
 	ErrUnableToStart  = errors.New("unable to start procces")
-
 	ErrRunningState   = errors.New("already running or pid file exist")
 	)
 
@@ -138,7 +136,6 @@ func runBackground() error {
 		filePath, _ = filepath.Abs(filePath)
 	}
 	cliExec := exec.Command(os.Args[0], "run", "--config", filePath)
-
 	err := cliExec.Start()
 	if err != nil {
 		NewLogger.Error(err)
