@@ -89,6 +89,7 @@ func main() {
 	sort.Sort(cli.CommandsByName(app.Commands))
 	sort.Sort(cli.FlagsByName(app.Flags))
 	NewLogger.SetLevel(logrus.DebugLevel)
+	NewLogger.Info(isBackground)
 	fd, _ := os.OpenFile(getLogFilePath(), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0777)
 	NewLogger.SetOutput(fd)
 	err := app.Run(os.Args)
@@ -102,14 +103,12 @@ func main() {
 func run(ctx *cli.Context) error {
 	err := getCfg(proxyConfigs)
 	if err != nil {
-		NewLogger.Error("Could not start proxy procces: ", err)
+		NewLogger.Error("unable to start procces: ", err)
 		os.Exit(1)
 	}
 	if isBackground {
-		return runBackground()
+		runBackground()
 	}
-
-
 	for _, conf := range proxyConfigs.Configs {
 		server := darproxy.NewProxy(
 			&http.Server{
