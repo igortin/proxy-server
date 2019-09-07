@@ -100,14 +100,16 @@ func main() {
 }
 
 func run(ctx *cli.Context) error {
+	err := getCfg(proxyConfigs)
+	if err != nil {
+		NewLogger.Error("Could not start proxy procces: ", err)
+		os.Exit(1)
+	}
 	if isBackground {
 		return runBackground()
 	}
-	err := getCfg(proxyConfigs)
-	if err != nil {
-		NewLogger.Error(err)
-		os.Exit(1)
-	}
+
+
 	for _, conf := range proxyConfigs.Configs {
 		server := darproxy.NewProxy(
 			&http.Server{
@@ -157,7 +159,8 @@ func stop(c *cli.Context) error {
 		NewLogger.Error("background process could not be stopped: ", err)
 		return err
 	}
-	NewLogger.Debug("background process was successfully stopped")
+
+	NewLogger.Debug("proxy server was successfully stopped", )
 	return nil
 }
 
@@ -231,5 +234,6 @@ func reload(c *cli.Context) error {
 	}
 	return nil
 }
+
 
 func getLogFilePath() string { return os.Getenv("HOME") + sep + LogPath }
