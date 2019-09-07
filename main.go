@@ -235,5 +235,4 @@ func reload(c *cli.Context) error {
 	return nil
 }
 
-
 func getLogFilePath() string { return os.Getenv("HOME") + sep + LogPath }
