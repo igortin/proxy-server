@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/darproxy"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"io/ioutil"
 	"net/http"
@@ -12,19 +13,24 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
 
 var (
+	Dir          = "." + strings.Trim(os.Args[0], "./")
 	filePath     string
-	defaultPath  = ".darproxy/config.json"
-	defaultPid   = ".darproxy/pid"
+	ConfigPath   = Dir + sep + "config.json"
+	PidPath      = Dir + sep + "pid"
+	LogPath      = Dir + sep + "proxy.log"
 	proxyConfigs = &darproxy.ProxyConfigs{}
 	sep          = "/"
 	wg           sync.WaitGroup
 	VERSION      = "0.0.1"
 	isBackground = false
+	fd           os.File
+	NewLogger    = logrus.New()
 )
 // Description messages
 var (
@@ -82,11 +88,14 @@ func main() {
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 	sort.Sort(cli.FlagsByName(app.Flags))
+	NewLogger.SetLevel(logrus.DebugLevel)
+	fd, _ := os.OpenFile(getLogFilePath(), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0777)
+	NewLogger.SetOutput(fd)
 	err := app.Run(os.Args)
-
 	if err != nil {
 		return
 	}
+
 	wg.Wait()
 }
 
@@ -96,21 +105,17 @@ func run(ctx *cli.Context) error {
 	}
 	err := getCfg(proxyConfigs)
 	if err != nil {
-		darproxy.Logger.Error(err)
-		return nil
+		NewLogger.Error(err)
+		os.Exit(1)
 	}
-
 	for _, conf := range proxyConfigs.Configs {
-		server := darproxy.NewProxyLogger(
-			darproxy.NewProxy(
-				&http.Server{
-					Addr:         conf.Port,
-					ReadTimeout:  5 * time.Second,
-					WriteTimeout: 10 * time.Second,
-					IdleTimeout:  15 * time.Second,
-				}, conf, conf.GraceTimoutStop),
-			darproxy.Logger, // for decorator use instance of logger
-		)
+		server := darproxy.NewProxy(
+			&http.Server{
+				Addr:         conf.Port,
+				ReadTimeout:  5 * time.Second,
+				WriteTimeout: 10 * time.Second,
+				IdleTimeout:  15 * time.Second,
+			}, conf, conf.GraceTimoutStop, NewLogger)
 		wg.Add(1)
 		go server.Run(&wg)
 	}
@@ -120,12 +125,12 @@ func run(ctx *cli.Context) error {
 func runBackground() error {
 	defer os.Exit(0)
 	if _, err := os.Stat(getPidFilePath()); err == nil {
-		darproxy.Logger.Error("already running or pid file exist : ", getPidFilePath())
+		NewLogger.Error("already running or pid file exist : ", getPidFilePath())
 		os.Exit(1)
 		return nil
 	}
 	if filePath == "" {
-		filePath = os.Getenv("HOME") + sep + defaultPath
+		filePath = os.Getenv("HOME") + sep + ConfigPath
 	} else {
 		filePath, _ = filepath.Abs(filePath)
 	}
@@ -133,17 +138,15 @@ func runBackground() error {
 
 	err := cliExec.Start()
 	if err != nil {
-		darproxy.Logger.Error(err)
+		NewLogger.Error(err)
 		os.Exit(1)
-		return nil
 	}
 	err = savePID(cliExec.Process.Pid)
 	if err != nil {
-		darproxy.Logger.Error(err)
+		NewLogger.Error(err)
 		os.Exit(1)
-		return nil
 	}
-	darproxy.Logger.Debug("background process ID: ", cliExec.Process.Pid)
+	NewLogger.Debug("background process ID: ", cliExec.Process.Pid)
 	return nil
 }
 
@@ -151,18 +154,18 @@ func stop(c *cli.Context) error {
 	defer os.Exit(0)
 	err := clear()
 	if err != nil {
-		darproxy.Logger.Error(err)
-		os.Exit(1)
-		return nil
+		NewLogger.Error("background process could not be stopped: ", err)
+		return err
 	}
-	darproxy.Logger.Debug("service successfully stopped")
+	NewLogger.Debug("background process was successfully stopped")
 	return nil
 }
 
 func getCfg(serviceCfg *darproxy.ProxyConfigs) error {
 	var b []byte
+
 	if filePath == "" {
-		filePath = os.Getenv("HOME") + sep + defaultPath
+		filePath = os.Getenv("HOME") + sep + ConfigPath
 	} else {
 		filePath, _ = filepath.Abs(filePath)
 	}
@@ -174,7 +177,7 @@ func getCfg(serviceCfg *darproxy.ProxyConfigs) error {
 }
 
 func getPidFilePath() string {
-	return os.Getenv("HOME") + sep + defaultPid
+	return os.Getenv("HOME") + sep + PidPath
 }
 
 func savePID(pid int) error {
@@ -213,21 +216,20 @@ func clear() error {
 	if os.Remove(getPidFilePath()) != nil {
 		return ErrUnableToRemove
 	}
-	darproxy.Logger.Debug("clear() successfully complete")
+	defer fd.Close()
 	return nil
 }
 
 func reload(c *cli.Context) error {
 	err := clear()
 	if err != nil {
-		darproxy.Logger.Error(err)
 		return err
 	}
 	err = runBackground()
 	if err != nil {
-		darproxy.Logger.Error(err)
 		return err
 	}
-	darproxy.Logger.Debug("config successfully updated")
 	return nil
 }
+
+func getLogFilePath() string { return os.Getenv("HOME") + sep + LogPath }
