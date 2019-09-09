@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"github.com/darproxy"
+	"github.com/salmon"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"io/ioutil"
@@ -24,7 +24,7 @@ var (
 	ConfigPath   = Dir + sep + "config.json"
 	PidPath      = Dir + sep + "pid"
 	LogPath      = Dir + sep + "proxy.log"
-	proxyConfigs = &darproxy.ProxyConfigs{}
+	proxyConfigs = &salmon.ProxyConfigs{}
 	sep          = "/"
 	wg           sync.WaitGroup
 	VERSION      = "0.0.1"
@@ -110,7 +110,7 @@ func run(ctx *cli.Context) error {
 		runBackground()
 	}
 	for _, conf := range proxyConfigs.Configs {
-		server := darproxy.NewProxy(
+		server := salmon.NewProxy(
 			&http.Server{
 				Addr:         conf.Port,
 				ReadTimeout:  5 * time.Second,
@@ -165,7 +165,7 @@ func stop(c *cli.Context) error {
 	return nil
 }
 
-func getCfg(serviceCfg *darproxy.ProxyConfigs) error {
+func getCfg(serviceCfg *salmon.ProxyConfigs) error {
 	var b []byte
 
 	if filePath == "" {
